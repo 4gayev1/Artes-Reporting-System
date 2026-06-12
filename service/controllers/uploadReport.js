@@ -72,7 +72,20 @@ function extractStatusFromZip(buffer) {
     }
   }
 
-  return { statusFields, executor, environment };
+  const processStatusEntry = entries.find((e) =>
+    e.entryName.match(/([^/]+\/)?widgets\/process-status\.json$/)
+  );
+
+  let processStatus = null;
+  if (processStatusEntry) {
+    try {
+      processStatus = JSON.parse(processStatusEntry.getData().toString("utf8"));
+    } catch {
+      processStatus = null;
+    }
+  }
+
+  return { statusFields, executor, environment, processStatus };
 }
 
 function normalizeZipBuffer(buffer) {
@@ -98,20 +111,20 @@ function normalizeZipBuffer(buffer) {
 
 async function uploadReport(req, res) {
   try {
-    const {
-      type,
-      name,
-      project,
-      failed,
-      broken,
-      passed,
-      skipped,
-      unknown,
-      pipeline_status,
-      pipeline_url,
-      pipeline_name,
-      pipeline_build_order,
-    } = req.body;
+      const {
+        type,
+        name,
+        project,
+        failed,
+        broken,
+        passed,
+        skipped,
+        unknown,
+        pipeline_status: pipeline_status_body,
+        pipeline_url,
+        pipeline_name,
+        pipeline_build_order,
+      } = req.body;
 
     const reportFile = req.file;
 
@@ -146,10 +159,23 @@ async function uploadReport(req, res) {
     };
 
     if (extension === "zip") {
-      const extracted = extractStatusFromZip(reportFile.buffer);
+        const extracted = extractStatusFromZip(reportFile.buffer);
       if (extracted.statusFields) statusFields = extracted.statusFields;
       if (extracted.executor) executor = extracted.executor;
       if (extracted.environment) environment = extracted.environment;
+
+      if (extracted.processStatus !== undefined && extracted.processStatus !== null) {
+        try {
+          if (typeof extracted.processStatus === "object" && "exitCode" in extracted.processStatus) {
+            const n = Number(extracted.processStatus.exitCode);
+            if (!Number.isNaN(n)) pipeline_status_body = n;
+          } else if (typeof extracted.processStatus === "number") {
+            const n = Number(extracted.processStatus);
+            if (!Number.isNaN(n)) pipeline_status_body = n;
+          }
+        } catch (e) {
+        }
+      }
 
       reportFile.buffer = normalizeZipBuffer(reportFile.buffer);
     }
@@ -166,6 +192,8 @@ async function uploadReport(req, res) {
       [id, t, name, minioUrl, reportUrl, proj, environment.os_name, environment.browser_name, environment.environment, executor.type]
     );
 
+    const pipelineStatus = pipeline_status_body ?? 0;
+
     const statusResult = await pool.query(
       `INSERT INTO status
          (id, failed, broken, passed, skipped, unknown,
@@ -178,7 +206,7 @@ async function uploadReport(req, res) {
         statusFields.passed,
         statusFields.skipped,
         statusFields.unknown,
-        pipeline_status ?? 0,
+        pipelineStatus,
         executor.buildUrl,
         executor.buildName,
         executor.buildOrder,
