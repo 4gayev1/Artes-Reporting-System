@@ -111,20 +111,19 @@ function normalizeZipBuffer(buffer) {
 
 async function uploadReport(req, res) {
   try {
-      const {
-        type,
-        name,
-        project,
-        failed,
-        broken,
-        passed,
-        skipped,
-        unknown,
-        pipeline_status: pipeline_status_body,
-        pipeline_url,
-        pipeline_name,
-        pipeline_build_order,
-      } = req.body;
+    const {
+      type,
+      name,
+      project,
+      failed,
+      broken,
+      passed,
+      skipped,
+      unknown,
+      pipeline_url,
+      pipeline_name,
+      pipeline_build_order,
+    } = req.body;
 
     const reportFile = req.file;
 
@@ -158,22 +157,25 @@ async function uploadReport(req, res) {
       environment: null,
     };
 
-    if (extension === "zip") {
-        const extracted = extractStatusFromZip(reportFile.buffer);
-      if (extracted.statusFields) statusFields = extracted.statusFields;
-      if (extracted.executor) executor = extracted.executor;
-      if (extracted.environment) environment = extracted.environment;
+    let pipelineStatus = 0;
 
-      if (extracted.processStatus !== undefined && extracted.processStatus !== null) {
-        try {
-          if (typeof extracted.processStatus === "object" && "exitCode" in extracted.processStatus) {
-            const n = Number(extracted.processStatus.exitCode);
-            if (!Number.isNaN(n)) pipeline_status_body = n;
-          } else if (typeof extracted.processStatus === "number") {
-            const n = Number(extracted.processStatus);
-            if (!Number.isNaN(n)) pipeline_status_body = n;
-          }
-        } catch (e) {
+    if (extension === "zip") {
+      const extracted = extractStatusFromZip(reportFile.buffer);
+      if (extracted.statusFields) statusFields = extracted.statusFields;
+      if (extracted.executor)     executor     = extracted.executor;
+      if (extracted.environment)  environment  = extracted.environment;
+
+      if (extracted.processStatus != null) {
+        const raw = extracted.processStatus;
+        const code =
+          typeof raw === "object" && "exitCode" in raw
+            ? raw.exitCode
+            : typeof raw === "number"
+            ? raw
+            : null;
+
+        if (code != null && !Number.isNaN(Number(code))) {
+          pipelineStatus = Number(code);
         }
       }
 
@@ -191,8 +193,6 @@ async function uploadReport(req, res) {
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *;`,
       [id, t, name, minioUrl, reportUrl, proj, environment.os_name, environment.browser_name, environment.environment, executor.type]
     );
-
-    const pipelineStatus = pipeline_status_body ?? 0;
 
     const statusResult = await pool.query(
       `INSERT INTO status
