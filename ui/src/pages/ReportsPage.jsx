@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
+import ReactDOM from "react-dom";
 import {
   getReports,
   getProjects,
@@ -30,6 +31,57 @@ import {
   FiServer,
 } from "react-icons/fi";
 
+
+function DropdownPortal({ anchorRef, open, dropdownRef, children }) {
+  const [coords, setCoords] = useState({ top: 0, left: 0, width: 0 });
+
+  useEffect(() => {
+    if (!open || !anchorRef.current) return;
+
+    const update = () => {
+      const rect = anchorRef.current.getBoundingClientRect();
+      const spaceBelow = window.innerHeight - rect.bottom;
+      const spaceAbove = rect.top;
+      const dropHeight = 220;
+
+      const showAbove = spaceBelow < dropHeight && spaceAbove > spaceBelow;
+
+      setCoords({
+        top: showAbove ? rect.top - dropHeight - 6 : rect.bottom + 6,
+        left: rect.left,
+        width: rect.width,
+      });
+    };
+
+    update();
+    window.addEventListener("scroll", update, true);
+    window.addEventListener("resize", update);
+    return () => {
+      window.removeEventListener("scroll", update, true);
+      window.removeEventListener("resize", update);
+    };
+  }, [open, anchorRef]);
+
+  if (!open) return null;
+
+  return ReactDOM.createPortal(
+    <div
+      ref={dropdownRef}
+      style={{
+        position: "fixed",
+        top: coords.top,
+        left: coords.left,
+        width: coords.width,
+        zIndex: 99999,
+      }}
+    >
+      {children}
+    </div>,
+    document.body,
+  );
+}
+
+// ── CustomSelect ──────────────────────────────────────────────────────────────
 function CustomSelect({
   value,
   onChange,
@@ -40,6 +92,9 @@ function CustomSelect({
   compact,
 }) {
   const [open, setOpen] = useState(false);
+  const buttonRef = useRef(null);
+  const dropdownRef = useRef(null);
+
   const bg = dark ? "#0d1930" : "#ffffff";
   const bdr = dark ? "#1a2e4a" : "#d1d5db";
   const txt = dark ? "#f1f5f9" : "#0f172a";
@@ -47,6 +102,18 @@ function CustomSelect({
   const hov = dark ? "#1a2e4a" : "#f1f5f9";
   const acc = "#3b82f6";
   const selected = options.find((o) => o.value === value);
+
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e) => {
+      const inButton = buttonRef.current?.contains(e.target);
+      const inDropdown = dropdownRef.current?.contains(e.target);
+      if (!inButton && !inDropdown) setOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [open]);
 
   return (
     <div
@@ -57,6 +124,7 @@ function CustomSelect({
       }}
     >
       <button
+        ref={buttonRef}
         onClick={() => setOpen((o) => !o)}
         style={{
           width: "100%",
@@ -111,60 +179,30 @@ function CustomSelect({
         />
       </button>
 
-      {open && (
-        <>
-          <div
-            style={{ position: "fixed", inset: 0, zIndex: 40 }}
-            onClick={() => setOpen(false)}
-          />
-          <div
-            style={{
-              position: "absolute",
-              top: "calc(100% + 6px)",
-              left: 0,
-              right: 0,
-              background: dark ? "#0d1930" : "#ffffff",
-              border: `1.5px solid ${acc}`,
-              borderRadius: 12,
-              zIndex: 50,
-              overflow: "hidden",
-              boxShadow: dark
-                ? "0 16px 48px rgba(0,0,0,0.7)"
-                : "0 8px 30px rgba(0,0,0,0.13)",
-              minWidth: 160,
-            }}
-          >
-            <div
-              onClick={() => {
-                onChange("");
-                setOpen(false);
-              }}
-              style={{
-                padding: "11px 14px",
-                cursor: "pointer",
-                fontSize: 14,
-                fontFamily: "'Plus Jakarta Sans', sans-serif",
-                color: !value ? acc : sub,
-                fontWeight: !value ? 700 : 400,
-                background: !value ? `${acc}18` : "transparent",
-              }}
-              onMouseEnter={(e) => {
-                if (value) e.currentTarget.style.background = hov;
-              }}
-              onMouseLeave={(e) => {
-                if (value) e.currentTarget.style.background = "transparent";
-              }}
-            >
-              {placeholder}
-            </div>
-            <div
-              style={{ height: 1, background: dark ? "#1a2e4a" : "#f1f5f9" }}
-            />
-            {options.map((opt) => (
+      <DropdownPortal
+        anchorRef={buttonRef}
+        open={open}
+        dropdownRef={dropdownRef}
+      >
+        <div
+          style={{
+            background: dark ? "#0d1930" : "#ffffff",
+            border: `1.5px solid ${acc}`,
+            borderRadius: 12,
+            overflow: "hidden",
+            boxShadow: dark
+              ? "0 16px 48px rgba(0,0,0,0.7)"
+              : "0 8px 30px rgba(0,0,0,0.13)",
+            maxHeight: 220,
+            overflowY: "auto",
+          }}
+        >
+          {/* "All" / clear option — hidden for compact (per-page) selects */}
+          {!compact && (
+            <>
               <div
-                key={opt.value}
                 onClick={() => {
-                  onChange(opt.value);
+                  onChange("");
                   setOpen(false);
                 }}
                 style={{
@@ -172,36 +210,66 @@ function CustomSelect({
                   cursor: "pointer",
                   fontSize: 14,
                   fontFamily: "'Plus Jakarta Sans', sans-serif",
-                  color: value === opt.value ? acc : txt,
-                  fontWeight: value === opt.value ? 700 : 400,
-                  background: value === opt.value ? `${acc}18` : "transparent",
-                  transition: "background 0.12s",
+                  color: !value ? acc : sub,
+                  fontWeight: !value ? 700 : 400,
+                  background: !value ? `${acc}18` : "transparent",
                 }}
                 onMouseEnter={(e) => {
-                  if (value !== opt.value)
-                    e.currentTarget.style.background = hov;
+                  if (value) e.currentTarget.style.background = hov;
                 }}
                 onMouseLeave={(e) => {
-                  if (value !== opt.value)
-                    e.currentTarget.style.background = "transparent";
+                  if (value) e.currentTarget.style.background = "transparent";
                 }}
               >
-                {opt.label}
+                {placeholder}
               </div>
-            ))}
-          </div>
-        </>
-      )}
+              <div
+                style={{ height: 1, background: dark ? "#1a2e4a" : "#f1f5f9" }}
+              />
+            </>
+          )}
+          {options.map((opt) => (
+            <div
+              key={opt.value}
+              onClick={() => {
+                onChange(opt.value);
+                setOpen(false);
+              }}
+              style={{
+                padding: "11px 14px",
+                cursor: "pointer",
+                fontSize: 14,
+                fontFamily: "'Plus Jakarta Sans', sans-serif",
+                color: value === opt.value ? acc : txt,
+                fontWeight: value === opt.value ? 700 : 400,
+                background: value === opt.value ? `${acc}18` : "transparent",
+                transition: "background 0.12s",
+              }}
+              onMouseEnter={(e) => {
+                if (value !== opt.value) e.currentTarget.style.background = hov;
+              }}
+              onMouseLeave={(e) => {
+                if (value !== opt.value)
+                  e.currentTarget.style.background = "transparent";
+              }}
+            >
+              {opt.label}
+            </div>
+          ))}
+        </div>
+      </DropdownPortal>
     </div>
   );
 }
 
+// ── DateInput ─────────────────────────────────────────────────────────────────
 function DateInput({ value, onChange, onClear, placeholder, dark }) {
   const bg = dark ? "#0d1930" : "#ffffff";
   const bdr = dark ? "#1a2e4a" : "#d1d5db";
   const txt = dark ? "#f1f5f9" : "#0f172a";
   const sub = dark ? "#94a3b8" : "#64748b";
   const acc = "#3b82f6";
+
   return (
     <div style={{ position: "relative", flex: "1 1 150px", maxWidth: 200 }}>
       <FiCalendar
@@ -305,11 +373,13 @@ export default function ReportsPage() {
     page: Number(searchParams.get("page")) || 1,
     size: Number(searchParams.get("size")) || 20,
   }));
+
   const [debouncedName, setDebouncedName] = useState(filters.name);
 
   const hasAdvancedFilters =
     filters.browser || filters.os || filters.executor || filters.environment;
 
+  // ── init ──
   useEffect(() => {
     const init = async () => {
       const [logoRes, projRes, typeRes, browserRes, osRes, execRes, envRes] =
@@ -334,6 +404,7 @@ export default function ReportsPage() {
     init();
   }, []);
 
+  // ── debounce search ──
   useEffect(() => {
     const t = setTimeout(() => {
       if (debouncedName !== filters.name)
@@ -342,7 +413,7 @@ export default function ReportsPage() {
     return () => clearTimeout(t);
   }, [debouncedName]);
 
-  // Auto-expand advanced panel if advanced filters are active
+  // ── auto-expand advanced if filters active ──
   useEffect(() => {
     if (hasAdvancedFilters) setShowAdvanced(true);
   }, []);
@@ -357,6 +428,7 @@ export default function ReportsPage() {
       totalPages: res.data.totalPages,
     });
   };
+
   const syncUrl = (f) => {
     const p = new URLSearchParams();
     Object.entries(f).forEach(([k, v]) => {
@@ -364,33 +436,38 @@ export default function ReportsPage() {
     });
     setSearchParams(p);
   };
+
   const handleFilterChange = (name, value) => {
     const nf = { ...filters, [name]: value, page: name === "page" ? value : 1 };
     setFilters(nf);
     syncUrl(nf);
     fetchReports(nf);
   };
+
   const changePage = (p) => {
     const nf = { ...filters, page: p };
     setFilters(nf);
     syncUrl(nf);
     fetchReports(nf);
   };
+
   const clearFilter = (name) => {
     if (name === "name") setDebouncedName("");
     handleFilterChange(name, "");
   };
+
   const toggleDarkMode = () => {
     setAnimateMode(true);
     setDarkMode((p) => !p);
     setTimeout(() => setAnimateMode(false), 700);
   };
+
   const handleSaveName = async (id) => {
     if (!editingName.trim()) return;
     try {
       await patchName(id, { name: editingName });
       setReports((prev) =>
-        prev.map((r) => (r.id === id ? { ...r, name: editingName } : r))
+        prev.map((r) => (r.id === id ? { ...r, name: editingName } : r)),
       );
     } catch (e) {
       console.error(e);
@@ -399,6 +476,7 @@ export default function ReportsPage() {
       setEditingName("");
     }
   };
+
   const changePageSize = (s) => {
     const nf = { ...filters, size: Number(s), page: 1 };
     setFilters(nf);
@@ -406,6 +484,7 @@ export default function ReportsPage() {
     fetchReports(nf);
   };
 
+  // ── theme tokens ──
   const dm = darkMode;
   const pageBg = dm ? "#060e1f" : "#f0f4fa";
   const cardBg = dm ? "#0a1628" : "#ffffff";
@@ -447,21 +526,31 @@ export default function ReportsPage() {
         @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700&display=swap');
         *, *::before, *::after { box-sizing: border-box; }
         body { margin: 0; }
-        @keyframes circleExp { 0%{transform:scale(0);opacity:.7} 100%{transform:scale(90);opacity:0} }
+        @keyframes circleExp {
+          0%   { transform: scale(0); opacity: .7; }
+          100% { transform: scale(90); opacity: 0; }
+        }
         @keyframes advancedSlide {
           from { opacity: 0; transform: translateY(-6px); }
           to   { opacity: 1; transform: translateY(0); }
         }
-        .anim-circle { position:fixed;top:0;right:0;width:3rem;height:3rem;border-radius:50%;background:${dm ? "#f1f5f9" : "#060e1f"};z-index:9999;pointer-events:none;animation:circleExp .7s cubic-bezier(.4,0,.2,1) forwards; }
+        .anim-circle {
+          position: fixed; top: 0; right: 0;
+          width: 3rem; height: 3rem; border-radius: 50%;
+          background: ${dm ? "#f1f5f9" : "#060e1f"};
+          z-index: 9999; pointer-events: none;
+          animation: circleExp .7s cubic-bezier(.4,0,.2,1) forwards;
+        }
         .pg-btn { transition: background .15s, transform .1s; }
         .pg-btn:hover:not(:disabled) { transform: translateY(-1px); }
-        .pg-btn:disabled { opacity:.35; cursor:not-allowed; }
+        .pg-btn:disabled { opacity: .35; cursor: not-allowed; }
         .tbl-tr:hover td { background: ${dm ? "#0d193090" : "#f8fafc"} !important; }
         .tbl-td { transition: background .12s; }
         .srch:focus { border-color: ${acc} !important; box-shadow: 0 0 0 3px ${acc}22 !important; }
         .adv-filters-panel { animation: advancedSlide 0.22s ease; }
         .adv-toggle-btn:hover { border-color: ${acc} !important; color: ${acc} !important; }
       `}</style>
+
       {animateMode && <span className="anim-circle" />}
 
       <div
@@ -470,8 +559,8 @@ export default function ReportsPage() {
           background: pageBg,
           color: txtMain,
           padding: "28px 32px",
-          fontFamily: "'Plus Jakarta Sans',sans-serif",
-          transition: "background .4s,color .4s",
+          fontFamily: "'Plus Jakarta Sans', sans-serif",
+          transition: "background .4s, color .4s",
         }}
       >
         {/* ── Header ── */}
@@ -566,6 +655,7 @@ export default function ReportsPage() {
                 {btn.icon}
               </button>
             ))}
+
             <button
               onClick={() => setShowModal(true)}
               style={{
@@ -577,7 +667,7 @@ export default function ReportsPage() {
                 fontWeight: 700,
                 fontSize: 16,
                 cursor: "pointer",
-                fontFamily: "'Plus Jakarta Sans',sans-serif",
+                fontFamily: "'Plus Jakarta Sans', sans-serif",
                 boxShadow: "0 4px 16px rgba(34,197,94,.4)",
                 transition: "transform .15s, box-shadow .15s",
                 letterSpacing: "-0.01em",
@@ -648,7 +738,7 @@ export default function ReportsPage() {
                   borderRadius: 12,
                   color: txtMain,
                   fontSize: 15,
-                  fontFamily: "'Plus Jakarta Sans',sans-serif",
+                  fontFamily: "'Plus Jakarta Sans', sans-serif",
                   outline: "none",
                   transition: "border-color .2s, box-shadow .2s",
                 }}
@@ -702,12 +792,14 @@ export default function ReportsPage() {
               dark={dm}
             />
 
+            {/* Right-side controls */}
             <div
               style={{
                 display: "flex",
                 alignItems: "center",
                 gap: 10,
                 marginLeft: "auto",
+                flexShrink: 0,
               }}
             >
               {/* Advanced filter toggle */}
@@ -726,7 +818,7 @@ export default function ReportsPage() {
                   cursor: "pointer",
                   fontSize: 14,
                   fontWeight: 600,
-                  fontFamily: "'Plus Jakarta Sans',sans-serif",
+                  fontFamily: "'Plus Jakarta Sans', sans-serif",
                   transition: "border-color .2s, color .2s, background .2s",
                   whiteSpace: "nowrap",
                 }}
@@ -765,9 +857,13 @@ export default function ReportsPage() {
                 />
               </button>
 
-              <span style={{ fontSize: 14, color: txtMut, whiteSpace: "nowrap" }}>
+              <span
+                style={{ fontSize: 14, color: txtMut, whiteSpace: "nowrap" }}
+              >
                 Per page:
               </span>
+
+              {/* ← This is the fixed per-page select */}
               <CustomSelect
                 compact
                 value={String(filters.size)}
@@ -796,7 +892,6 @@ export default function ReportsPage() {
                 alignItems: "center",
               }}
             >
-
               <CustomSelect
                 value={filters.browser}
                 onChange={(v) => handleFilterChange("browser", v)}
@@ -805,7 +900,6 @@ export default function ReportsPage() {
                 icon={FiGlobe}
                 dark={dm}
               />
-
               <CustomSelect
                 value={filters.os}
                 onChange={(v) => handleFilterChange("os", v)}
@@ -814,7 +908,6 @@ export default function ReportsPage() {
                 icon={FiMonitor}
                 dark={dm}
               />
-
               <CustomSelect
                 value={filters.executor}
                 onChange={(v) => handleFilterChange("executor", v)}
@@ -823,7 +916,6 @@ export default function ReportsPage() {
                 icon={FiServer}
                 dark={dm}
               />
-
               <CustomSelect
                 value={filters.environment}
                 onChange={(v) => handleFilterChange("environment", v)}
@@ -832,12 +924,11 @@ export default function ReportsPage() {
                 icon={FiTag}
                 dark={dm}
               />
-
             </div>
           )}
         </div>
 
-        {/* ── Grid ── */}
+        {/* ── Grid / Table ── */}
         {layout === "grid" ? (
           <div
             style={{
@@ -897,11 +988,12 @@ export default function ReportsPage() {
                 background: cardBg,
                 color: txtMain,
                 cursor: "pointer",
-                fontFamily: "'Plus Jakarta Sans',sans-serif",
+                fontFamily: "'Plus Jakarta Sans', sans-serif",
               }}
             >
               ← Prev
             </button>
+
             {Array.from({ length: pagination.totalPages }, (_, i) => i + 1).map(
               (p) => (
                 <button
@@ -918,13 +1010,14 @@ export default function ReportsPage() {
                     background: p === pagination.page ? acc : cardBg,
                     color: p === pagination.page ? "#fff" : txtSub,
                     cursor: "pointer",
-                    fontFamily: "'Plus Jakarta Sans',sans-serif",
+                    fontFamily: "'Plus Jakarta Sans', sans-serif",
                   }}
                 >
                   {p}
                 </button>
-              )
+              ),
             )}
+
             <button
               className="pg-btn"
               disabled={pagination.page === pagination.totalPages}
@@ -938,7 +1031,7 @@ export default function ReportsPage() {
                 background: cardBg,
                 color: txtMain,
                 cursor: "pointer",
-                fontFamily: "'Plus Jakarta Sans',sans-serif",
+                fontFamily: "'Plus Jakarta Sans', sans-serif",
               }}
             >
               Next →

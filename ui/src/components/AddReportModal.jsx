@@ -2,27 +2,39 @@ import { useState, useRef, useEffect } from "react";
 import { addReport } from "../api";
 import { FiX, FiUpload, FiChevronDown, FiFolder, FiTag } from "react-icons/fi";
 
-
-function ComboSelect({ value, onChange, options, placeholder, icon: Icon, dark, inputBg, inputBdr, txt, mute, bdr }) {
+function ComboSelect({
+  value,
+  onChange,
+  options,
+  placeholder,
+  icon: Icon,
+  dark,
+  inputBg,
+  inputBdr,
+  txt,
+  mute,
+  bdr,
+}) {
   const [open, setOpen] = useState(false);
   const [inputVal, setInputVal] = useState(value);
   const wrapRef = useRef(null);
   const acc = "#3b82f6";
 
-
-  useEffect(() => { setInputVal(value); }, [value]);
-
+  useEffect(() => {
+    setInputVal(value);
+  }, [value]);
 
   useEffect(() => {
     const handler = (e) => {
-      if (wrapRef.current && !wrapRef.current.contains(e.target)) setOpen(false);
+      if (wrapRef.current && !wrapRef.current.contains(e.target))
+        setOpen(false);
     };
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
   const filtered = options.filter((o) =>
-    o.toLowerCase().includes(inputVal?.toLowerCase() ?? "")
+    o.toLowerCase().includes(inputVal?.toLowerCase() ?? ""),
   );
 
   const handleInput = (e) => {
@@ -45,12 +57,19 @@ function ComboSelect({ value, onChange, options, placeholder, icon: Icon, dark, 
 
   return (
     <div ref={wrapRef} style={{ position: "relative", width: "100%" }}>
-      <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
+      <div
+        style={{ position: "relative", display: "flex", alignItems: "center" }}
+      >
         {Icon && (
           <Icon
             size={14}
             color={mute}
-            style={{ position: "absolute", left: 12, pointerEvents: "none", zIndex: 1 }}
+            style={{
+              position: "absolute",
+              left: 12,
+              pointerEvents: "none",
+              zIndex: 1,
+            }}
           />
         )}
         <input
@@ -74,7 +93,15 @@ function ComboSelect({ value, onChange, options, placeholder, icon: Icon, dark, 
             boxSizing: "border-box",
           }}
         />
-        <div style={{ position: "absolute", right: 8, display: "flex", alignItems: "center", gap: 2 }}>
+        <div
+          style={{
+            position: "absolute",
+            right: 8,
+            display: "flex",
+            alignItems: "center",
+            gap: 2,
+          }}
+        >
           {inputVal && (
             <FiX
               size={13}
@@ -86,7 +113,11 @@ function ComboSelect({ value, onChange, options, placeholder, icon: Icon, dark, 
           <FiChevronDown
             size={14}
             color={mute}
-            style={{ cursor: "pointer", transform: open ? "rotate(180deg)" : "", transition: "transform .2s" }}
+            style={{
+              cursor: "pointer",
+              transform: open ? "rotate(180deg)" : "",
+              transition: "transform .2s",
+            }}
             onClick={() => setOpen((o) => !o)}
           />
         </div>
@@ -105,7 +136,9 @@ function ComboSelect({ value, onChange, options, placeholder, icon: Icon, dark, 
             zIndex: 100,
             maxHeight: 180,
             overflowY: "auto",
-            boxShadow: dark ? "0 16px 48px rgba(0,0,0,.7)" : "0 8px 30px rgba(0,0,0,.13)",
+            boxShadow: dark
+              ? "0 16px 48px rgba(0,0,0,.7)"
+              : "0 8px 30px rgba(0,0,0,.13)",
           }}
         >
           {filtered.map((opt) => (
@@ -123,10 +156,14 @@ function ComboSelect({ value, onChange, options, placeholder, icon: Icon, dark, 
                 transition: "background .1s",
               }}
               onMouseEnter={(e) => {
-                if (inputVal !== opt) e.currentTarget.style.background = dark ? "#1a2e4a" : "#f1f5f9";
+                if (inputVal !== opt)
+                  e.currentTarget.style.background = dark
+                    ? "#1a2e4a"
+                    : "#f1f5f9";
               }}
               onMouseLeave={(e) => {
-                if (inputVal !== opt) e.currentTarget.style.background = "transparent";
+                if (inputVal !== opt)
+                  e.currentTarget.style.background = "transparent";
               }}
             >
               {opt}
@@ -138,15 +175,26 @@ function ComboSelect({ value, onChange, options, placeholder, icon: Icon, dark, 
   );
 }
 
-
-export default function AddReportModal({ onClose, onAdd, projects, types, darkMode }) {
+export default function AddReportModal({
+  onClose,
+  onAdd,
+  projects,
+  types,
+  darkMode,
+}) {
   const [file, setFile] = useState(null);
   const [name, setName] = useState("");
   const [project, setProject] = useState("");
   const [type, setType] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const [counts, setCounts] = useState({ passed: "", failed: "", broken: "", skipped: "", unknown: "" });
+  const [counts, setCounts] = useState({
+    passed: "",
+    failed: "",
+    broken: "",
+    skipped: "",
+    unknown: "",
+  });
   const [pipelineStatus, setPipelineStatus] = useState("");
   const [pipelineUrl, setPipelineUrl] = useState("");
   const [pipelineName, setPipelineName] = useState("");
@@ -162,11 +210,15 @@ export default function AddReportModal({ onClose, onAdd, projects, types, darkMo
       formData.append("name", name);
       formData.append("project", project);
       formData.append("type", type);
-      Object.entries(counts).forEach(([k, v]) => { if (v !== "") formData.append(k, v); });
-      if (pipelineStatus !== "") formData.append("pipeline_status", pipelineStatus);
+      Object.entries(counts).forEach(([k, v]) => {
+        if (v !== "") formData.append(k, v);
+      });
+      if (pipelineStatus !== "")
+        formData.append("pipeline_status", pipelineStatus);
       if (pipelineUrl !== "") formData.append("pipeline_url", pipelineUrl);
       if (pipelineName !== "") formData.append("pipeline_name", pipelineName);
-      if (pipelineOrder !== "") formData.append("pipeline_build_order", pipelineOrder);
+      if (pipelineOrder !== "")
+        formData.append("pipeline_build_order", pipelineOrder);
       await addReport(formData);
       onAdd();
       onClose();
@@ -203,13 +255,20 @@ export default function AddReportModal({ onClose, onAdd, projects, types, darkMo
     boxSizing: "border-box",
   };
 
-  
   const projectOptions = projects.map((p) => Object.values(p)[0]);
   const typeOptions = types.map((t) => Object.values(t)[0]);
 
   function FieldLabel({ children }) {
     return (
-      <label style={{ fontSize: 12, fontWeight: 600, color: sub, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+      <label
+        style={{
+          fontSize: 12,
+          fontWeight: 600,
+          color: sub,
+          textTransform: "uppercase",
+          letterSpacing: "0.05em",
+        }}
+      >
         {children}
       </label>
     );
@@ -234,36 +293,135 @@ export default function AddReportModal({ onClose, onAdd, projects, types, darkMo
         .modal-cancel:hover { background: ${bdr} !important; }
       `}</style>
 
-      <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.65)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 50, padding: 20, backdropFilter: "blur(4px)" }}>
-        <div className="modal-box" style={{ background: bg, border: `1px solid ${bdr}`, borderRadius: 20, width: "100%", maxWidth: 500, maxHeight: "90vh", overflowY: "auto", boxShadow: dm ? "0 24px 80px #000000aa" : "0 24px 80px #00000022", fontFamily: "'Plus Jakarta Sans', sans-serif", position: "relative" }}>
-
+      <div
+        style={{
+          position: "fixed",
+          inset: 0,
+          background: "rgba(0,0,0,0.65)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          zIndex: 50,
+          padding: 20,
+          backdropFilter: "blur(4px)",
+        }}
+      >
+        <div
+          className="modal-box"
+          style={{
+            background: bg,
+            border: `1px solid ${bdr}`,
+            borderRadius: 20,
+            width: "100%",
+            maxWidth: 500,
+            maxHeight: "90vh",
+            overflowY: "auto",
+            boxShadow: dm ? "0 24px 80px #000000aa" : "0 24px 80px #00000022",
+            fontFamily: "'Plus Jakarta Sans', sans-serif",
+            position: "relative",
+          }}
+        >
           {loading && (
-            <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 10, borderRadius: 20 }}>
-              <div style={{ width: 44, height: 44, borderRadius: "50%", border: "4px solid rgba(255,255,255,0.15)", borderTopColor: "#22c55e", animation: "spin 0.8s linear infinite" }} />
+            <div
+              style={{
+                position: "absolute",
+                inset: 0,
+                background: "rgba(0,0,0,0.5)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                zIndex: 10,
+                borderRadius: 20,
+              }}
+            >
+              <div
+                style={{
+                  width: 44,
+                  height: 44,
+                  borderRadius: "50%",
+                  border: "4px solid rgba(255,255,255,0.15)",
+                  borderTopColor: "#22c55e",
+                  animation: "spin 0.8s linear infinite",
+                }}
+              />
             </div>
           )}
 
           {/* Header */}
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "20px 24px 16px", borderBottom: `1px solid ${bdr}`, background: hBg, borderRadius: "20px 20px 0 0" }}>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              padding: "20px 24px 16px",
+              borderBottom: `1px solid ${bdr}`,
+              background: hBg,
+              borderRadius: "20px 20px 0 0",
+            }}
+          >
             <div>
-              <h2 style={{ margin: 0, fontSize: 20, fontWeight: 800, color: txt }}>Add New Report</h2>
+              <h2
+                style={{ margin: 0, fontSize: 20, fontWeight: 800, color: txt }}
+              >
+                Add New Report
+              </h2>
             </div>
-            <button onClick={onClose} disabled={loading} style={{ background: "none", border: `1px solid ${bdr}`, borderRadius: 8, cursor: "pointer", color: mute, padding: 6, display: "flex", transition: "background .15s, color .15s" }}
-              onMouseEnter={(e) => { e.currentTarget.style.background = bdr; e.currentTarget.style.color = txt; }}
-              onMouseLeave={(e) => { e.currentTarget.style.background = "none"; e.currentTarget.style.color = mute; }}>
+            <button
+              onClick={onClose}
+              disabled={loading}
+              style={{
+                background: "none",
+                border: `1px solid ${bdr}`,
+                borderRadius: 8,
+                cursor: "pointer",
+                color: mute,
+                padding: 6,
+                display: "flex",
+                transition: "background .15s, color .15s",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = bdr;
+                e.currentTarget.style.color = txt;
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = "none";
+                e.currentTarget.style.color = mute;
+              }}
+            >
               <FiX size={16} />
             </button>
           </div>
 
           {/* Form */}
-          <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 12, padding: "20px 24px 24px" }}>
-
+          <form
+            onSubmit={handleSubmit}
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              gap: 12,
+              padding: "20px 24px 24px",
+            }}
+          >
             <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
               <FieldLabel>Report Name *</FieldLabel>
-              <input className="rp-input" style={baseInput} type="text" value={name} placeholder="e.g. regression-2024-02" onChange={(e) => setName(e.target.value)} disabled={loading} />
+              <input
+                className="rp-input"
+                style={baseInput}
+                type="text"
+                value={name}
+                placeholder="e.g. regression-2024-02"
+                onChange={(e) => setName(e.target.value)}
+                disabled={loading}
+              />
             </div>
 
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "1fr 1fr",
+                gap: 10,
+              }}
+            >
               <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
                 <FieldLabel>Project</FieldLabel>
                 <ComboSelect
@@ -291,29 +449,112 @@ export default function AddReportModal({ onClose, onAdd, projects, types, darkMo
             {/* File upload */}
             <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
               <FieldLabel>Report File *</FieldLabel>
-              <label className="upload-label" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, padding: "12px 14px", background: inputB, border: `2px dashed ${file ? "#22c55e" : inputBdr}`, borderRadius: 10, cursor: loading ? "not-allowed" : "pointer", transition: "border-color .2s" }}>
+              <label
+                className="upload-label"
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: 10,
+                  padding: "12px 14px",
+                  background: inputB,
+                  border: `2px dashed ${file ? "#22c55e" : inputBdr}`,
+                  borderRadius: 10,
+                  cursor: loading ? "not-allowed" : "pointer",
+                  transition: "border-color .2s",
+                }}
+              >
                 <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                   <FiUpload size={16} color={file ? "#22c55e" : mute} />
-                  <span style={{ fontSize: 14, color: file ? (dm ? "#86efac" : "#16a34a") : mute, fontWeight: file ? 600 : 400 }}>
+                  <span
+                    style={{
+                      fontSize: 14,
+                      color: file ? (dm ? "#86efac" : "#16a34a") : mute,
+                      fontWeight: file ? 600 : 400,
+                    }}
+                  >
                     {file ? file.name : "Click to choose a file…"}
                   </span>
                 </div>
-                {file && <span style={{ fontSize: 11, color: mute, fontFamily: "monospace", flexShrink: 0 }}>{(file.size / 1024 / 1024).toFixed(2)} MB</span>}
-                <input type="file" onChange={(e) => setFile(e.target.files[0])} style={{ display: "none" }} disabled={loading} />
+                {file && (
+                  <span
+                    style={{
+                      fontSize: 11,
+                      color: mute,
+                      fontFamily: "monospace",
+                      flexShrink: 0,
+                    }}
+                  >
+                    {(file.size / 1024 / 1024).toFixed(2)} MB
+                  </span>
+                )}
+                <input
+                  type="file"
+                  onChange={(e) => setFile(e.target.files[0])}
+                  style={{ display: "none" }}
+                  disabled={loading}
+                />
               </label>
             </div>
 
-
             {/* Actions */}
-            <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 6 }}>
-              <button type="button" onClick={onClose} disabled={loading} className="modal-cancel"
-                style={{ padding: "10px 20px", borderRadius: 10, fontSize: 14, fontWeight: 600, border: `1px solid ${bdr}`, background: inputB, color: sub, cursor: "pointer", fontFamily: "'Plus Jakarta Sans', sans-serif", transition: "background .15s" }}>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "flex-end",
+                gap: 10,
+                marginTop: 6,
+              }}
+            >
+              <button
+                type="button"
+                onClick={onClose}
+                disabled={loading}
+                className="modal-cancel"
+                style={{
+                  padding: "10px 20px",
+                  borderRadius: 10,
+                  fontSize: 14,
+                  fontWeight: 600,
+                  border: `1px solid ${bdr}`,
+                  background: inputB,
+                  color: sub,
+                  cursor: "pointer",
+                  fontFamily: "'Plus Jakarta Sans', sans-serif",
+                  transition: "background .15s",
+                }}
+              >
                 Cancel
               </button>
-              <button type="submit" disabled={loading}
-                style={{ padding: "10px 28px", borderRadius: 10, fontSize: 14, fontWeight: 700, background: loading ? "#16a34a88" : "linear-gradient(135deg, #22c55e, #16a34a)", color: "#fff", border: "none", cursor: loading ? "not-allowed" : "pointer", fontFamily: "'Plus Jakarta Sans', sans-serif", boxShadow: "0 4px 14px #22c55e44", transition: "transform .15s, box-shadow .15s" }}
-                onMouseEnter={(e) => { if (!loading) { e.currentTarget.style.transform = "translateY(-1px)"; e.currentTarget.style.boxShadow = "0 6px 20px #22c55e55"; } }}
-                onMouseLeave={(e) => { e.currentTarget.style.transform = ""; e.currentTarget.style.boxShadow = "0 4px 14px #22c55e44"; }}>
+              <button
+                type="submit"
+                disabled={loading}
+                style={{
+                  padding: "10px 28px",
+                  borderRadius: 10,
+                  fontSize: 14,
+                  fontWeight: 700,
+                  background: loading
+                    ? "#16a34a88"
+                    : "linear-gradient(135deg, #22c55e, #16a34a)",
+                  color: "#fff",
+                  border: "none",
+                  cursor: loading ? "not-allowed" : "pointer",
+                  fontFamily: "'Plus Jakarta Sans', sans-serif",
+                  boxShadow: "0 4px 14px #22c55e44",
+                  transition: "transform .15s, box-shadow .15s",
+                }}
+                onMouseEnter={(e) => {
+                  if (!loading) {
+                    e.currentTarget.style.transform = "translateY(-1px)";
+                    e.currentTarget.style.boxShadow = "0 6px 20px #22c55e55";
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = "";
+                  e.currentTarget.style.boxShadow = "0 4px 14px #22c55e44";
+                }}
+              >
                 {loading ? "Uploading…" : "Add Report"}
               </button>
             </div>
