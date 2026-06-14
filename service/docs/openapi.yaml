@@ -16,76 +16,317 @@ paths:
     get:
       summary: Get logo URL
       tags: [Logo]
+      description: Returns the URL of the stored logo image
       responses:
         "200":
           description: Logo URL returned successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  url:
+                    type: string
+                    description: Full URL to the logo image
+                    example: "http://localhost:4010/api/logo"
+        "500":
+          description: Internal server error
 
   /api/logo:
     get:
       summary: Get logo image
       tags: [Logo]
+      description: Retrieves the stored logo image file
       responses:
         "200":
-          description: Logo image file
+          description: Logo image file returned
+          content:
+            image/*:
+              schema:
+                type: string
+                format: binary
         "404":
           description: Logo not found
+        "500":
+          description: Internal server error
     post:
       summary: Upload a logo
       tags: [Logo]
+      description: Upload a new logo image to replace the existing one
       requestBody:
         required: true
         content:
           multipart/form-data:
             schema:
               type: object
+              required:
+                - file
               properties:
                 file:
                   type: string
                   format: binary
+                  description: Logo image file
       responses:
         "200":
           description: Logo uploaded successfully
+        "400":
+          description: File is required
+        "500":
+          description: Internal server error
 
-  /api/reports:
-    get:
-      summary: Get all reports
+  /api/report:
+    post:
+      summary: Upload a report file
       tags: [Reports]
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - name
+                - file
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: Report file (zip or other format)
+                name:
+                  type: string
+                  description: Report name
+                type:
+                  type: string
+                  description: Report type
+                project:
+                  type: string
+                  description: Project name
+                failed:
+                  type: integer
+                  description: Number of failed tests
+                broken:
+                  type: integer
+                  description: Number of broken tests
+                passed:
+                  type: integer
+                  description: Number of passed tests
+                skipped:
+                  type: integer
+                  description: Number of skipped tests
+                unknown:
+                  type: integer
+                  description: Number of unknown tests
+                pipeline_url:
+                  type: string
+                  description: Pipeline/build URL
+                pipeline_name:
+                  type: string
+                  description: Pipeline name
+                pipeline_build_order:
+                  type: integer
+                  description: Pipeline build order number
       responses:
         "200":
-          description: List of all reports
+          description: Report uploaded successfully
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  type: object
-                  properties:
-                    id:
-                      type: string
-                    name:
-                      type: string
-                    type:
-                      type: string
-                    project:
-                      type: string
-                    minio_url:
-                      type: string
-                    report_url:
-                      type: string
+                type: object
+                properties:
+                  id:
+                    type: string
+                  type:
+                    type: string
+                  name:
+                    type: string
+                  minio_url:
+                    type: string
+                  report_url:
+                    type: string
+                  project:
+                    type: string
+        "400":
+          description: Missing required fields
+
+  /api/reports:
+    get:
+      summary: Get all reports with pagination and filtering
+      tags: [Reports]
+      description: Retrieve a paginated list of reports with optional filtering by project, name, type, date range, browser, OS, executor, or environment
+      parameters:
+        - in: query
+          name: page
+          schema:
+            type: integer
+            default: 1
+          description: Page number (1-indexed)
+        - in: query
+          name: size
+          schema:
+            type: integer
+            default: 10
+          description: Number of reports per page
+        - in: query
+          name: project
+          schema:
+            type: string
+          description: Filter by project name (partial match, case-insensitive)
+        - in: query
+          name: name
+          schema:
+            type: string
+          description: Filter by report name (partial match, case-insensitive)
+        - in: query
+          name: type
+          schema:
+            type: string
+          description: Filter by report type (exact match)
+        - in: query
+          name: date
+          schema:
+            type: string
+            format: date
+          description: Filter by exact upload date (YYYY-MM-DD)
+        - in: query
+          name: fromDate
+          schema:
+            type: string
+            format: date-time
+          description: Filter reports uploaded from this date (ISO 8601)
+        - in: query
+          name: toDate
+          schema:
+            type: string
+            format: date-time
+          description: Filter reports uploaded up to this date (ISO 8601)
+        - in: query
+          name: browser
+          schema:
+            type: string
+          description: Filter by browser name (exact match)
+        - in: query
+          name: os
+          schema:
+            type: string
+          description: Filter by operating system (exact match)
+        - in: query
+          name: executor
+          schema:
+            type: string
+          description: Filter by executor name (exact match)
+        - in: query
+          name: environment
+          schema:
+            type: string
+          description: Filter by environment (exact match)
+      responses:
+        "200":
+          description: Paginated list of reports
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                          description: Report UUID
+                        name:
+                          type: string
+                          description: Report name
+                        type:
+                          type: string
+                          description: Report type
+                        project:
+                          type: string
+                          description: Project name
+                        minio_url:
+                          type: string
+                          description: MinIO storage URL
+                        report_url:
+                          type: string
+                          description: API URL to preview the report
+                        upload_date:
+                          type: string
+                          format: date-time
+                          description: Report upload timestamp
+                        os_name:
+                          type: string
+                          nullable: true
+                          description: Operating system name
+                        browser_name:
+                          type: string
+                          nullable: true
+                          description: Browser name
+                        environment:
+                          type: string
+                          nullable: true
+                          description: Test environment
+                        executor:
+                          type: string
+                          nullable: true
+                          description: Test executor/runner
+                        failed:
+                          type: integer
+                          description: Number of failed tests
+                        broken:
+                          type: integer
+                          description: Number of broken tests
+                        passed:
+                          type: integer
+                          description: Number of passed tests
+                        skipped:
+                          type: integer
+                          description: Number of skipped tests
+                        unknown:
+                          type: integer
+                          description: Number of unknown test results
+                        pipeline_status:
+                          type: integer
+                          nullable: true
+                          description: Pipeline exit code
+                        pipeline_url:
+                          type: string
+                          nullable: true
+                          description: Pipeline/build URL
+                        pipeline_name:
+                          type: string
+                          nullable: true
+                          description: Pipeline name
+                        pipeline_build_order:
+                          type: integer
+                          nullable: true
+                          description: Pipeline build number
+                  total:
+                    type: integer
+                    description: Total number of reports matching filter
+                  page:
+                    type: integer
+                    description: Current page number
+                  size:
+                    type: integer
+                    description: Page size
+        "500":
+          description: Internal server error
     delete:
       tags: [Reports]
-      summary: Delete all reports
+      summary: Delete reports by filter
+      description: Delete one or multiple reports matching the specified criteria. Uses the same filter parameters as GET
       parameters:
         - in: query
           name: project
           schema:
             type: string
-          description: Filter by project name (partial match)
+          description: Filter by project name (partial match, case-insensitive)
         - in: query
           name: name
           schema:
             type: string
-          description: Filter by report name (partial match)
+          description: Filter by report name (partial match, case-insensitive)
         - in: query
           name: type
           schema:
@@ -111,14 +352,25 @@ paths:
           description: Filter reports uploaded up to this date
       responses:
         "200":
-          description: All matching reports deleted
+          description: Reports deleted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Reports deleted successfully"
         "404":
-          description: No reports found to delete
+          description: No reports found matching the filter criteria
+        "500":
+          description: Internal server error
 
   /api/preview/{id}:
     get:
       summary: Preview report by ID
       tags: [Reports]
+      description: Retrieve and preview a report by its ID. If the report is a zip file, it extracts and serves the index.html
       parameters:
         - name: id
           in: path
@@ -128,14 +380,17 @@ paths:
           description: Report UUID
       responses:
         "302":
-          description: Redirects to the report index.html
+          description: Redirects to the report index.html from temp storage
         "404":
           description: Report not found
+        "500":
+          description: Internal server error
 
   /api/types:
     get:
-      summary: Get all report types
+      summary: Get all available report types
       tags: [Reports]
+      description: Retrieve a list of all report types that have been uploaded to the system
       responses:
         "200":
           description: List of report types
@@ -145,11 +400,15 @@ paths:
                 type: array
                 items:
                   type: string
+                  example: "Allure"
+        "500":
+          description: Internal server error
    
   /api/projects:
     get:
-      summary: Get all projects
+      summary: Get all available projects
       tags: [Reports]
+      description: Retrieve a list of all projects that have reports in the system
       responses:
         "200":
           description: List of projects
@@ -159,11 +418,15 @@ paths:
                 type: array
                 items:
                   type: string
+                  example: "ProjectA"
+        "500":
+          description: Internal server error
 
   /api/browsers:
     get:
+      summary: Get all available browsers
       tags: [Reports]
-      summary: Get browsers
+      description: Retrieve a list of all browser names found in uploaded reports
       responses:
         "200":
           description: List of browsers
@@ -173,25 +436,33 @@ paths:
                 type: array
                 items:
                   type: string
+                  example: "Chrome"
+        "500":
+          description: Internal server error
 
   /api/os:
     get:
+      summary: Get all available operating systems
       tags: [Reports]
-      summary: Get OS
+      description: Retrieve a list of all operating systems found in uploaded reports
       responses:
         "200":
-          description: List of OS
+          description: List of operating systems
           content:
             application/json:
               schema:
                 type: array
                 items:
                   type: string
+                  example: "Windows"
+        "500":
+          description: Internal server error
 
   /api/executors:
     get:
+      summary: Get all available executors
       tags: [Reports]
-      summary: Get executors
+      description: Retrieve a list of all executor/runner names found in uploaded reports
       responses:
         "200":
           description: List of executors
@@ -201,11 +472,15 @@ paths:
                 type: array
                 items:
                   type: string
+                  example: "Jenkins"
+        "500":
+          description: Internal server error
 
   /api/environments:
     get:
+      summary: Get all available environments
       tags: [Reports]
-      summary: Get environments
+      description: Retrieve a list of all environments found in uploaded reports
       responses:
         "200":
           description: List of environments
@@ -215,44 +490,67 @@ paths:
                 type: array
                 items:
                   type: string
+                  example: "staging"
+        "500":
+          description: Internal server error
                   
   /api/report/{id}:
     patch:
-      summary: Change report name
+      summary: Update report name
       tags: [Reports]
+      description: Change the name of an existing report
       parameters:
         - name: id
           in: path
           required: true
           schema:
             type: string
+          description: Report UUID
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
+              required:
+                - name
               properties:
                 name:
                   type: string
+                  description: New report name
       responses:
         "200":
-          description: Report name updated
+          description: Report name updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  name:
+                    type: string
+        "400":
+          description: Invalid request or missing name field
         "404":
           description: Report not found
+        "500":
+          description: Internal server error
 
     delete:
+      summary: Delete report by ID
       tags: [Reports]
-      summary: Delete report by id
+      description: Delete a single report and all associated data from the system
       parameters:
         - name: id
           in: path
           required: true
           schema:
             type: string
+          description: Report UUID
       responses:
         "200":
-          description: Report deleted
+          description: Report deleted successfully
           content:
             application/json:
               schema:
@@ -262,7 +560,7 @@ paths:
                     type: string
                     example: "Report deleted successfully"
         "404":
-          description: Not found
+          description: Report not found
           content:
             application/json:
               schema:
@@ -271,3 +569,5 @@ paths:
                   error:
                     type: string
                     example: "Report not found"
+        "500":
+          description: Internal server error
