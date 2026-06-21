@@ -31,7 +31,31 @@ import {
   FiServer,
 } from "react-icons/fi";
 
+const STORAGE_KEYS = {
+  DARK_MODE: "artes_dark_mode",
+  LAYOUT: "artes_layout",
+  PAGE_SIZE: "artes_page_size",
+};
 
+function loadPref(key, fallback) {
+  try {
+    const val = localStorage.getItem(key);
+    if (val === null) return fallback;
+    if (val === "true") return true;
+    if (val === "false") return false;
+    return val;
+  } catch {
+    return fallback;
+  }
+}
+
+function savePref(key, value) {
+  try {
+    localStorage.setItem(key, String(value));
+  } catch {}
+}
+
+// ── DropdownPortal ────────────────────────────────────────────────────────────
 function DropdownPortal({ anchorRef, open, dropdownRef, children }) {
   const [coords, setCoords] = useState({ top: 0, left: 0, width: 0 });
 
@@ -43,9 +67,7 @@ function DropdownPortal({ anchorRef, open, dropdownRef, children }) {
       const spaceBelow = window.innerHeight - rect.bottom;
       const spaceAbove = rect.top;
       const dropHeight = 220;
-
       const showAbove = spaceBelow < dropHeight && spaceAbove > spaceBelow;
-
       setCoords({
         top: showAbove ? rect.top - dropHeight - 6 : rect.bottom + 6,
         left: rect.left,
@@ -82,20 +104,12 @@ function DropdownPortal({ anchorRef, open, dropdownRef, children }) {
 }
 
 // ── CustomSelect ──────────────────────────────────────────────────────────────
-function CustomSelect({
-  value,
-  onChange,
-  options,
-  placeholder,
-  icon: Icon,
-  dark,
-  compact,
-}) {
+function CustomSelect({ value, onChange, options, placeholder, icon: Icon, dark, compact }) {
   const [open, setOpen] = useState(false);
   const buttonRef = useRef(null);
   const dropdownRef = useRef(null);
 
-  const bg = dark ? "#0d1930" : "#ffffff";
+  const bg  = dark ? "#0d1930" : "#ffffff";
   const bdr = dark ? "#1a2e4a" : "#d1d5db";
   const txt = dark ? "#f1f5f9" : "#0f172a";
   const sub = dark ? "#94a3b8" : "#64748b";
@@ -103,11 +117,10 @@ function CustomSelect({
   const acc = "#3b82f6";
   const selected = options.find((o) => o.value === value);
 
-
   useEffect(() => {
     if (!open) return;
     const handler = (e) => {
-      const inButton = buttonRef.current?.contains(e.target);
+      const inButton   = buttonRef.current?.contains(e.target);
       const inDropdown = dropdownRef.current?.contains(e.target);
       if (!inButton && !inDropdown) setOpen(false);
     };
@@ -179,11 +192,7 @@ function CustomSelect({
         />
       </button>
 
-      <DropdownPortal
-        anchorRef={buttonRef}
-        open={open}
-        dropdownRef={dropdownRef}
-      >
+      <DropdownPortal anchorRef={buttonRef} open={open} dropdownRef={dropdownRef}>
         <div
           style={{
             background: dark ? "#0d1930" : "#ffffff",
@@ -197,14 +206,10 @@ function CustomSelect({
             overflowY: "auto",
           }}
         >
-          {/* "All" / clear option — hidden for compact (per-page) selects */}
           {!compact && (
             <>
               <div
-                onClick={() => {
-                  onChange("");
-                  setOpen(false);
-                }}
+                onClick={() => { onChange(""); setOpen(false); }}
                 style={{
                   padding: "11px 14px",
                   cursor: "pointer",
@@ -214,27 +219,18 @@ function CustomSelect({
                   fontWeight: !value ? 700 : 400,
                   background: !value ? `${acc}18` : "transparent",
                 }}
-                onMouseEnter={(e) => {
-                  if (value) e.currentTarget.style.background = hov;
-                }}
-                onMouseLeave={(e) => {
-                  if (value) e.currentTarget.style.background = "transparent";
-                }}
+                onMouseEnter={(e) => { if (value) e.currentTarget.style.background = hov; }}
+                onMouseLeave={(e) => { if (value) e.currentTarget.style.background = "transparent"; }}
               >
                 {placeholder}
               </div>
-              <div
-                style={{ height: 1, background: dark ? "#1a2e4a" : "#f1f5f9" }}
-              />
+              <div style={{ height: 1, background: dark ? "#1a2e4a" : "#f1f5f9" }} />
             </>
           )}
           {options.map((opt) => (
             <div
               key={opt.value}
-              onClick={() => {
-                onChange(opt.value);
-                setOpen(false);
-              }}
+              onClick={() => { onChange(opt.value); setOpen(false); }}
               style={{
                 padding: "11px 14px",
                 cursor: "pointer",
@@ -245,13 +241,8 @@ function CustomSelect({
                 background: value === opt.value ? `${acc}18` : "transparent",
                 transition: "background 0.12s",
               }}
-              onMouseEnter={(e) => {
-                if (value !== opt.value) e.currentTarget.style.background = hov;
-              }}
-              onMouseLeave={(e) => {
-                if (value !== opt.value)
-                  e.currentTarget.style.background = "transparent";
-              }}
+              onMouseEnter={(e) => { if (value !== opt.value) e.currentTarget.style.background = hov; }}
+              onMouseLeave={(e) => { if (value !== opt.value) e.currentTarget.style.background = "transparent"; }}
             >
               {opt.label}
             </div>
@@ -264,7 +255,7 @@ function CustomSelect({
 
 // ── DateInput ─────────────────────────────────────────────────────────────────
 function DateInput({ value, onChange, onClear, placeholder, dark }) {
-  const bg = dark ? "#0d1930" : "#ffffff";
+  const bg  = dark ? "#0d1930" : "#ffffff";
   const bdr = dark ? "#1a2e4a" : "#d1d5db";
   const txt = dark ? "#f1f5f9" : "#0f172a";
   const sub = dark ? "#94a3b8" : "#64748b";
@@ -336,43 +327,54 @@ function DateInput({ value, onChange, onClear, placeholder, dark }) {
 // ── Page ──────────────────────────────────────────────────────────────────────
 export default function ReportsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
-  const [logoUrl, setLogoUrl] = useState();
-  const [reports, setReports] = useState([]);
-  const [projects, setProjects] = useState([]);
-  const [types, setTypes] = useState([]);
-  const [browsers, setBrowsers] = useState([]);
-  const [osList, setOsList] = useState([]);
-  const [executors, setExecutors] = useState([]);
+  const [logoUrl, setLogoUrl]           = useState();
+  const [reports, setReports]           = useState([]);
+  const [projects, setProjects]         = useState([]);
+  const [types, setTypes]               = useState([]);
+  const [browsers, setBrowsers]         = useState([]);
+  const [osList, setOsList]             = useState([]);
+  const [executors, setExecutors]       = useState([]);
   const [environments, setEnvironments] = useState([]);
-  const [showModal, setShowModal] = useState(false);
-  const [darkMode, setDarkMode] = useState(true);
-  const [animateMode, setAnimateMode] = useState(false);
-  const [layout, setLayout] = useState("grid");
+  const [showModal, setShowModal]       = useState(false);
+  const [animateMode, setAnimateMode]   = useState(false);
   const [editingReportId, setEditingReportId] = useState(null);
-  const [editingName, setEditingName] = useState("");
+  const [editingName, setEditingName]   = useState("");
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const [copiedId, setCopiedId]         = useState(null);
+
+  // ── persisted preferences ──────────────────────────────────────────────────
+  const [darkMode, setDarkMode] = useState(() => loadPref(STORAGE_KEYS.DARK_MODE, true));
+  const [layout, setLayout]     = useState(() => loadPref(STORAGE_KEYS.LAYOUT, "grid"));
+
+  useEffect(() => { savePref(STORAGE_KEYS.DARK_MODE, darkMode); }, [darkMode]);
+  useEffect(() => { savePref(STORAGE_KEYS.LAYOUT,    layout);   }, [layout]);
+
+  const PAGE_SIZE_OPTIONS = [10, 20, 50];
+
   const [pagination, setPagination] = useState({
     page: 1,
     size: 20,
     total: 0,
     totalPages: 1,
   });
-  const PAGE_SIZE_OPTIONS = [10, 20, 50];
-  const [copiedId, setCopiedId] = useState(null);
 
   const [filters, setFilters] = useState(() => ({
-    name: searchParams.get("name") || "",
-    project: searchParams.get("project") || "",
-    type: searchParams.get("type") || "",
-    fromDate: searchParams.get("fromDate") || "",
-    toDate: searchParams.get("toDate") || "",
-    browser: searchParams.get("browser") || "",
-    os: searchParams.get("os") || "",
-    executor: searchParams.get("executor") || "",
+    name:        searchParams.get("name")        || "",
+    project:     searchParams.get("project")     || "",
+    type:        searchParams.get("type")        || "",
+    fromDate:    searchParams.get("fromDate")    || "",
+    toDate:      searchParams.get("toDate")      || "",
+    browser:     searchParams.get("browser")     || "",
+    os:          searchParams.get("os")          || "",
+    executor:    searchParams.get("executor")    || "",
     environment: searchParams.get("environment") || "",
-    page: Number(searchParams.get("page")) || 1,
-    size: Number(searchParams.get("size")) || 20,
+    page:        Number(searchParams.get("page")) || 1,
+    // URL param wins; otherwise fall back to saved preference
+    size:        Number(searchParams.get("size")) || Number(loadPref(STORAGE_KEYS.PAGE_SIZE, 20)),
   }));
+
+  // persist page size whenever it changes
+  useEffect(() => { savePref(STORAGE_KEYS.PAGE_SIZE, filters.size); }, [filters.size]);
 
   const [debouncedName, setDebouncedName] = useState(filters.name);
 
@@ -422,9 +424,9 @@ export default function ReportsPage() {
     const res = await getReports(f);
     setReports(res.data.reports);
     setPagination({
-      page: res.data.page,
-      size: res.data.size,
-      total: res.data.total,
+      page:       res.data.page,
+      size:       res.data.size,
+      total:      res.data.total,
       totalPages: res.data.totalPages,
     });
   };
@@ -485,40 +487,22 @@ export default function ReportsPage() {
   };
 
   // ── theme tokens ──
-  const dm = darkMode;
-  const pageBg = dm ? "#060e1f" : "#f0f4fa";
-  const cardBg = dm ? "#0a1628" : "#ffffff";
-  const bdr = dm ? "#1a2e4a" : "#e2e8f0";
+  const dm      = darkMode;
+  const pageBg  = dm ? "#060e1f" : "#f0f4fa";
+  const cardBg  = dm ? "#0a1628" : "#ffffff";
+  const bdr     = dm ? "#1a2e4a" : "#e2e8f0";
   const txtMain = dm ? "#f1f5f9" : "#0f172a";
-  const txtSub = dm ? "#cbd5e1" : "#334155";
-  const txtMut = dm ? "#E0E0E0" : "#212121";
+  const txtSub  = dm ? "#cbd5e1" : "#334155";
+  const txtMut  = dm ? "#E0E0E0" : "#212121";
   const inputBg = dm ? "#0d1930" : "#ffffff";
-  const acc = "#3b82f6";
+  const acc     = "#3b82f6";
 
-  const projectOptions = projects.map((p) => ({
-    value: Object.values(p)[0],
-    label: Object.values(p)[0],
-  }));
-  const typeOptions = types.map((t) => ({
-    value: Object.values(t)[0],
-    label: Object.values(t)[0],
-  }));
-  const browserOptions = browsers.map((b) => ({
-    value: Object.values(b)[0],
-    label: Object.values(b)[0],
-  }));
-  const osOptions = osList.map((o) => ({
-    value: Object.values(o)[0],
-    label: Object.values(o)[0],
-  }));
-  const executorOptions = executors.map((e) => ({
-    value: Object.values(e)[0],
-    label: Object.values(e)[0],
-  }));
-  const environmentOptions = environments.map((e) => ({
-    value: Object.values(e)[0],
-    label: Object.values(e)[0],
-  }));
+  const projectOptions     = projects.map((p) => ({ value: Object.values(p)[0], label: Object.values(p)[0] }));
+  const typeOptions        = types.map((t) => ({ value: Object.values(t)[0], label: Object.values(t)[0] }));
+  const browserOptions     = browsers.map((b) => ({ value: Object.values(b)[0], label: Object.values(b)[0] }));
+  const osOptions          = osList.map((o) => ({ value: Object.values(o)[0], label: Object.values(o)[0] }));
+  const executorOptions    = executors.map((e) => ({ value: Object.values(e)[0], label: Object.values(e)[0] }));
+  const environmentOptions = environments.map((e) => ({ value: Object.values(e)[0], label: Object.values(e)[0] }));
 
   return (
     <>
@@ -615,14 +599,8 @@ export default function ReportsPage() {
                 title: "Toggle theme",
               },
               {
-                icon:
-                  layout === "grid" ? (
-                    <FiList size={20} />
-                  ) : (
-                    <FiGrid size={20} />
-                  ),
-                onClick: () =>
-                  setLayout((l) => (l === "grid" ? "table" : "grid")),
+                icon: layout === "grid" ? <FiList size={20} /> : <FiGrid size={20} />,
+                onClick: () => setLayout((l) => (l === "grid" ? "table" : "grid")),
                 title: "Toggle layout",
               },
             ].map((btn, i) => (
@@ -674,13 +652,11 @@ export default function ReportsPage() {
               }}
               onMouseEnter={(e) => {
                 e.currentTarget.style.transform = "translateY(-1px)";
-                e.currentTarget.style.boxShadow =
-                  "0 8px 24px rgba(34,197,94,.55)";
+                e.currentTarget.style.boxShadow = "0 8px 24px rgba(34,197,94,.55)";
               }}
               onMouseLeave={(e) => {
                 e.currentTarget.style.transform = "";
-                e.currentTarget.style.boxShadow =
-                  "0 4px 16px rgba(34,197,94,.4)";
+                e.currentTarget.style.boxShadow = "0 4px 16px rgba(34,197,94,.4)";
               }}
             >
               + Add Report
@@ -701,7 +677,6 @@ export default function ReportsPage() {
               : "0 2px 12px rgba(0,0,0,.05)",
           }}
         >
-          {/* Main filter row */}
           <div
             style={{
               display: "flex",
@@ -711,9 +686,7 @@ export default function ReportsPage() {
             }}
           >
             {/* Search */}
-            <div
-              style={{ position: "relative", flex: "1 1 220px", maxWidth: 380 }}
-            >
+            <div style={{ position: "relative", flex: "1 1 220px", maxWidth: 380 }}>
               <FiTag
                 size={16}
                 color={txtMut}
@@ -767,7 +740,6 @@ export default function ReportsPage() {
               icon={FiFolder}
               dark={dm}
             />
-
             <CustomSelect
               value={filters.type}
               onChange={(v) => handleFilterChange("type", v)}
@@ -776,7 +748,6 @@ export default function ReportsPage() {
               icon={FiTag}
               dark={dm}
             />
-
             <DateInput
               value={filters.fromDate}
               onChange={(v) => handleFilterChange("fromDate", v)}
@@ -802,7 +773,6 @@ export default function ReportsPage() {
                 flexShrink: 0,
               }}
             >
-              {/* Advanced filter toggle */}
               <button
                 className="adv-toggle-btn"
                 onClick={() => setShowAdvanced((s) => !s)}
@@ -837,14 +807,7 @@ export default function ReportsPage() {
                       marginLeft: 2,
                     }}
                   >
-                    {
-                      [
-                        filters.browser,
-                        filters.os,
-                        filters.executor,
-                        filters.environment,
-                      ].filter(Boolean).length
-                    }
+                    {[filters.browser, filters.os, filters.executor, filters.environment].filter(Boolean).length}
                   </span>
                 )}
                 <FiChevronDown
@@ -857,13 +820,10 @@ export default function ReportsPage() {
                 />
               </button>
 
-              <span
-                style={{ fontSize: 14, color: txtMut, whiteSpace: "nowrap" }}
-              >
+              <span style={{ fontSize: 14, color: txtMut, whiteSpace: "nowrap" }}>
                 Per page:
               </span>
 
-              {/* ← This is the fixed per-page select */}
               <CustomSelect
                 compact
                 value={String(filters.size)}
@@ -994,29 +954,27 @@ export default function ReportsPage() {
               ← Prev
             </button>
 
-            {Array.from({ length: pagination.totalPages }, (_, i) => i + 1).map(
-              (p) => (
-                <button
-                  key={p}
-                  className="pg-btn"
-                  onClick={() => changePage(p)}
-                  style={{
-                    width: 42,
-                    height: 42,
-                    borderRadius: 10,
-                    fontSize: 15,
-                    fontWeight: 700,
-                    border: `1.5px solid ${p === pagination.page ? acc : bdr}`,
-                    background: p === pagination.page ? acc : cardBg,
-                    color: p === pagination.page ? "#fff" : txtSub,
-                    cursor: "pointer",
-                    fontFamily: "'Plus Jakarta Sans', sans-serif",
-                  }}
-                >
-                  {p}
-                </button>
-              ),
-            )}
+            {Array.from({ length: pagination.totalPages }, (_, i) => i + 1).map((p) => (
+              <button
+                key={p}
+                className="pg-btn"
+                onClick={() => changePage(p)}
+                style={{
+                  width: 42,
+                  height: 42,
+                  borderRadius: 10,
+                  fontSize: 15,
+                  fontWeight: 700,
+                  border: `1.5px solid ${p === pagination.page ? acc : bdr}`,
+                  background: p === pagination.page ? acc : cardBg,
+                  color: p === pagination.page ? "#fff" : txtSub,
+                  cursor: "pointer",
+                  fontFamily: "'Plus Jakarta Sans', sans-serif",
+                }}
+              >
+                {p}
+              </button>
+            ))}
 
             <button
               className="pg-btn"
